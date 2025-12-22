@@ -1,11 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=bm_gw_96ep
-#SBATCH --time=194:00:00
-#SBATCH --qos=bbdefault
+#SBATCH --job-name=bm_gw_96ep_gpu
+#SBATCH --time=96:00:00
+#SBATCH --qos=bbgpu
+#SBATCH --account=parkh-speech-decode1
+#SBATCH --gres=gpu:a100:1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=20
+#SBATCH --cpus-per-task=18
 #SBATCH --mem=256G
-#SBATCH --output=logs/train_gwilliam_96_%j.log
 #SBATCH --output=/rds/projects/p/parkh-speech-decode1/brainmagick_default/logs/train_gwilliam_96_%j.out
 #SBATCH --error=/rds/projects/p/parkh-speech-decode1/brainmagick_default/logs/train_gwilliam_96_%j.err
 
@@ -27,8 +28,7 @@ set +u
 mamba activate /rds/projects/p/parkh-speech-decode1
 set -u
 
-# --- runtime env (CPU) ---
-export CUDA_VISIBLE_DEVICES=""
+# --- runtime env (GPU) ---
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
@@ -45,15 +45,13 @@ import sys, torch, torchaudio
 print("Python:", sys.executable)
 print("Torch:", torch.__version__, "CUDA?", torch.cuda.is_available())
 print("Torchaudio:", getattr(torchaudio, "__version__", "unknown"))
+print("CUDA device:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none")
 PY
 
-# Go to repo
-cd /rds/projects/p/parkh-speech-decode1/brainmagick_default
-
-# Launch 
+# Launch
 dora run \
   --clear \
   'dset.selections=[gwilliams2022]' \
-  device=cpu \
-  num_workers=0 \
-  > logs/train_cpu_96h.log 2>&1
+  device=cuda \
+  num_workers=2 \
+  > logs/train_gpu_96h.log 2>&1
