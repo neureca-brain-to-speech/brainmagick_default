@@ -19,13 +19,43 @@ import hashlib
 import typing as tp
 from pathlib import Path
 from dataclasses import dataclass, fields, asdict
-
+from types import SimpleNamespace
 import pandas as pd
 import numpy as np
 import torchaudio
 from dora import to_absolute_path
 
 from . import utils
+
+def _normalize_torchaudio_metadata(info: tp.Any) -> tp.Tuple[int, int]:
+    """Normalize torchaudio metadata across modern and legacy return types."""
+    if hasattr(info, "num_frames") and hasattr(info, "sample_rate"):
+        return int(info.num_frames), int(info.sample_rate)
+
+    if isinstance(info, (tuple, list)) and len(info) >= 1:
+        signal_info = info[0]
+
+        if isinstance(signal_info, (tuple, list)) and len(signal_info) >= 2:
+            signal_info = SimpleNamespace(length=signal_info[0], rate=signal_info[1])
+
+        if hasattr(signal_info, "length"):
+            num_frames = int(signal_info.length)
+        elif hasattr(signal_info, "num_frames"):
+            num_frames = int(signal_info.num_frames)
+        else:
+            raise AttributeError("Unable to infer number of frames from torchaudio metadata")
+
+        if hasattr(signal_info, "rate"):
+            sample_rate = int(signal_info.rate)
+        elif hasattr(signal_info, "sample_rate"):
+            sample_rate = int(signal_info.sample_rate)
+        else:
+            raise AttributeError("Unable to infer sample rate from torchaudio metadata")
+
+        return num_frames, sample_rate
+
+    raise TypeError(f"Unsupported torchaudio.info return type: {type(info)}")
+
 
 
 @dataclass
@@ -130,7 +160,8 @@ class Sound(Event):
         else:
             assert Path(self.filepath).exists(), f'{self.filepath} does not exist.'
             info = torchaudio.info(self.filepath)
-            actual_duration = float(info.num_frames / info.sample_rate) - self.offset
+            num_frames, sample_rate = _normalize_torchaudio_metadata(info)
+            actual_duration = float(num_frames / sample_rate) - self.offset
             if self.duration is None or self.duration == 0:
                 self.duration = actual_duration
             else:

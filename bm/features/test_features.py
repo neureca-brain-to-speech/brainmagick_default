@@ -181,3 +181,17 @@ def test_wav2vec(cls, tmp_path: Path) -> None:
         out = feature.get_on_overlap(event, overlap)
         assert isinstance(out, torch.Tensor)
         assert out.shape == (feature.dimension, 100)
+
+@pytest.mark.parametrize("info_factory", [
+    lambda: type("Info", (), {"num_frames": 32000, "sample_rate": 16000})(),
+    lambda: (type("SignalInfo", (), {"length": 32000, "sample_rate": 16000})(), object()),
+])
+def test_extract_wav_part_torchaudio_info_variants(monkeypatch, info_factory) -> None:
+    wavpath = str(Path(__file__).parent.parent / "mockdata" / "one_two.wav")
+    monkeypatch.setattr("bm.features.audio.torchaudio.info", lambda _: info_factory())
+
+    wav, sample_rate = audio._extract_wav_part(wavpath, onset=0.0, offset=0.25)
+
+    assert wav.shape[-1] == sample_rate.to_ind(0.25)
+    assert int(sample_rate) == 16000
+    

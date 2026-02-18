@@ -193,3 +193,31 @@ def test_sound_duration() -> None:
         start=1.0, duration=0, modality='audio', language='test', filepath=filepath, offset=0.0)
 
     assert sound.duration == pytest.approx(1.322086)  # duration of the example wave file
+
+
+def test_sound_duration_modern_torchaudio_info(monkeypatch) -> None:
+    filepath = str(Path(__file__).parent / "mockdata" / "one_two.wav")
+
+    class _Info:
+        num_frames = 32000
+        sample_rate = 16000
+
+    monkeypatch.setattr("bm.events.torchaudio.info", lambda _: _Info())
+    sound = Sound(
+        start=1.0, duration=0, modality='audio', language='test', filepath=filepath, offset=0.5)
+
+    assert sound.duration == pytest.approx(1.5)
+
+
+def test_sound_duration_legacy_torchaudio_info(monkeypatch) -> None:
+    filepath = str(Path(__file__).parent / "mockdata" / "one_two.wav")
+
+    class _SignalInfo:
+        length = 32000
+        rate = 16000
+
+    monkeypatch.setattr("bm.events.torchaudio.info", lambda _: (_SignalInfo(), object()))
+    sound = Sound(
+        start=1.0, duration=0, modality='audio', language='test', filepath=filepath, offset=0.5)
+
+    assert sound.duration == pytest.approx(1.5)

@@ -315,7 +315,8 @@ def _extract_wav_part(
     """Extract a chunk of a wave file based on onset and offset in seconds
     """
     info = torchaudio.info(str(filepath))
-    sr = Frequency(info.sample_rate)
+    _, sample_rate = events._normalize_torchaudio_metadata(info)
+    sr = Frequency(sample_rate)
     wav = torchaudio.load(
         filepath, frame_offset=sr.to_ind(onset), num_frames=sr.to_ind(offset - onset))[0]
     delta = abs(wav.shape[-1] / sr - offset + onset)

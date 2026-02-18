@@ -14,7 +14,7 @@ set -euo pipefail
 
 module purge
 module load bluebear
-# module load bear-apps/2022b
+module load bear-apps/2022b
 module load Miniforge3/24.1.2-0
 # module load PyTorch/1.7.1-fosscuda-2020b
 
@@ -30,8 +30,9 @@ mamba activate /rds/projects/p/parkh-speech-decode1
 set -u
 
 # Ensure CUDA-enabled PyTorch is installed in the env (A100 nodes).
-mamba install -y -c pytorch -c nvidia pytorch pytorch-cuda=11.8 # deactivated for testing
-mamba install -y -c pytorch -c nvidia pytorch=1.7.1 torchaudio=0.7.2 # pytorch-cuda=11.1 -y
+# A100 GPUs support CUDA 11.1+, so pin to 11.1 for the PyTorch 1.7.1 build.
+mamba install -y -c pytorch -c nvidia pytorch pytorch-cuda=11.8 
+mamba install -y -c pytorch -c conda-forge pytorch=1.7.1 torchaudio=0.7.2 cudatoolkit=11.0
 
 # sanity: confirm GPU is visible
 python - <<'PY'
@@ -68,4 +69,4 @@ dora run \
   'dset.selections=[gwilliams2022]' \
   device=cuda \
   num_workers=4 \
-  > logs/train_gpu_96h.log 2>&1
+  > logs/train_gpu_96h_%j.log 2>&1
